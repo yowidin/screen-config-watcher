@@ -1,0 +1,24 @@
+[obwsc]
+# Path to the OBS Websocket Commands configuration file.
+config = "obwsc.config.toml"
+
+[settings]
+# Time to wait before applying a new preset (in seconds). Should be a higher value if you expect multiple configuration
+# changes to occur one after another (e.g.: Disconnecting multiple displays).
+grace_period = 15
+
+[presets.two_screens]
+# List of display names to match against.
+displays = ["BenQ EL2870U", "ASUS PB287Q"]
+# Name of the OBS profile to switch to.
+profile = "Two Screens"
+# Name of the OBS scene collection to switch to.
+scene_collection = "Two Screens"
+
+[presets.laptop_only]
+# List of display names to match against.
+displays = ["Built-in Retina Display"]
+# Name of the OBS profile to switch to.
+profile = "Laptop Only"
+# Name of the OBS scene collection to switch to.
+scene_collection = "Laptop Only"
