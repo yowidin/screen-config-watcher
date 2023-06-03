@@ -1,6 +1,6 @@
 [project]
 name = "screen-config-watcher"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
     { name = "Dennis Sitelew", email = "yowidin@gmail.com" },
 ]

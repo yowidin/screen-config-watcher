@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QMainWindow, QApplication
 import sys
 import signal
 
+from sys import platform
+
 from scw.log import Log
 from scw.options import Options
 from scw.config import Config
@@ -124,7 +126,8 @@ class ScreenConfigWatcherApp:
 
         signal.signal(signal.SIGINT, ScreenConfigWatcherApp.signal_handler)
         signal.signal(signal.SIGTERM, ScreenConfigWatcherApp.signal_handler)
-        signal.signal(signal.SIGQUIT, ScreenConfigWatcherApp.signal_handler)
+        if platform != 'win32':
+            signal.signal(signal.SIGQUIT, ScreenConfigWatcherApp.signal_handler)
 
         # Let the interpreter run each 500 ms, otherwise we can't receive signals
         self.signal_timer = QTimer()
