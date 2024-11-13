@@ -1,12 +1,12 @@
 [project]
 name = "screen-config-watcher"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
     { name = "Dennis Sitelew", email = "yowidin@gmail.com" },
 ]
 description = "A tool to watch OS screen configuration changes and change the OBS profile and scene collection accordingly."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

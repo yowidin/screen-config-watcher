@@ -3,6 +3,8 @@ from argparse import ArgumentParser
 import logging
 from typing import Optional
 
+from obwsc.log import Log as ObwscLog
+
 
 class Log:
     INSTANCE = None  # type: Optional[Log]
@@ -17,12 +19,7 @@ class Log:
         self.logger.setLevel(level)
         self.logger.propagate = False
 
-        commands_logger = logging.getLogger('obwsc')
-        commands_logger.setLevel(level)
-        commands_logger.propagate = False
-
         self._add_handler(self.logger, logging.StreamHandler())
-        self._add_handler(commands_logger, logging.StreamHandler())
 
     def _add_handler(self, logger, handler):
         handler.setLevel(self.level)
@@ -45,6 +42,9 @@ class Log:
             level = logging.ERROR
 
         if Log.INSTANCE is None:
+            ObwscLog.setup(args)
+            ObwscLog.INSTANCE.update_level(level)
+
             Log.INSTANCE = Log(level)
         else:
             raise RuntimeError('Logger already initialized')
