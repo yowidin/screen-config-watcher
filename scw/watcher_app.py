@@ -1,11 +1,13 @@
 from typing import List
 
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import QTimer, Signal, Qt
 from PySide6.QtGui import QGuiApplication, QScreen
 from PySide6.QtWidgets import QMainWindow, QApplication
 
 import sys
 import signal
+import subprocess
+import json
 
 from sys import platform
 
@@ -47,7 +49,31 @@ class MainWindow(QMainWindow):
         for screen in screens:
             self.print_screen_info(screen)
 
+        self.last_screens = [x.name() for x in screens]
+
+        self.screen_change_observer = self._subscribe_to_screen_change_events()
         self.screen_lock_listener = self._subscribe_to_screen_lock_events()
+
+    def _manual_recheck(self):
+        Log.debug(f'Display configuration changed, getting a fresh display list')
+
+        code = """from scw.screen_change.windows import get_display_list
+get_display_list() 
+        """
+        try:
+            get_res = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True).stdout
+        except subprocess.CalledProcessError as e:
+            Log.error("Error while running the target function:", e)
+            return
+
+        monitors_json = json.loads(get_res)
+        new_list = [x['name'] for x in monitors_json]
+
+        if sorted(self.last_screens) != sorted(new_list):
+            Log.info('Software configuration changed')
+            self._restart_timer()
+
+        self.last_screens = new_list
 
     def _subscribe_to_screen_lock_events(self):
         if sys.platform == 'darwin':
@@ -55,6 +81,16 @@ class MainWindow(QMainWindow):
             return MacOS(on_lock=self._on_screen_locked, on_unlock=self._on_screen_unlocked)
 
         # TODO: Linux and Windows
+
+    def _subscribe_to_screen_change_events(self):
+        if platform == 'win32':
+            # Handle screen configuration changes on Windows: Qt somehow doesn't generate a new list of screens
+            from scw.screen_change.windows import ScreenChangeObserver
+
+            def screen_change(*_):
+                self._manual_recheck()
+
+            return ScreenChangeObserver(screen_change)
 
     def _run_obws_command(self, *args):
         Log.debug(f'Running OBWS command: {" ".join(args)}')
@@ -86,24 +122,25 @@ class MainWindow(QMainWindow):
     def screen_added(self, screen: QScreen):
         Log.info('Screen added')
         MainWindow.print_screen_info(screen)
+        self.last_screens = [x.name() for x in self.app.screens()]
         self._restart_timer()
 
     def screen_removed(self, screen: QScreen):
         Log.info('Screen removed')
         MainWindow.print_screen_info(screen)
+        self.last_screens = [x.name() for x in self.app.screens()]
         self._restart_timer()
 
     def apply_changes(self):
         Log.debug('Applying changes...')
 
-        displays = [screen.name() for screen in self.app.screens()]
-        presets = self.options.config.find_matching_preset(displays)
+        presets = self.options.config.find_matching_preset(self.last_screens)
         if len(presets) == 0:
-            Log.warning(f'No preset found for {displays}')
+            Log.warning(f'No preset found for {self.last_screens}')
             return
 
         if len(presets) > 1:
-            Log.warning(f'Multiple presets found for {displays}: {[x.name for x in presets]}')
+            Log.warning(f'Multiple presets found for {self.last_screens}: {[x.name for x in presets]}')
             return
 
         preset = presets[0]
@@ -113,6 +150,12 @@ class MainWindow(QMainWindow):
 
         self._run_obws_command('--config', self.options.config.obwsc_config, 'switch-profile-and-scene-collection',
                                preset.profile_name, preset.scene_collection_name)
+
+    def closeEvent(self, event):
+        if self.screen_change_observer is not None:
+            self.observer.destroy()
+
+        event.accept()
 
 
 # noinspection PyUnresolvedReferences
@@ -128,6 +171,8 @@ class ScreenConfigWatcherApp:
         signal.signal(signal.SIGTERM, ScreenConfigWatcherApp.signal_handler)
         if platform != 'win32':
             signal.signal(signal.SIGQUIT, ScreenConfigWatcherApp.signal_handler)
+        else:
+            self.app.setAttribute(Qt.ApplicationAttribute.AA_NativeWindows, True)
 
         # Let the interpreter run each 500 ms, otherwise we can't receive signals
         self.signal_timer = QTimer()
